@@ -28,7 +28,7 @@ class Box:
         self.col = col
         self.x = row * width
         self.y = col * width
-        self.color = WHITE
+        self.color = WHITE  # Initialize with WHITE color
         self.width = width
         self.total_rows = total_rows
         self.owner = None
@@ -40,15 +40,21 @@ class Box:
             (self.x, self.y + self.width),  # Bottom-left corner
             (self.x + self.width, self.y + self.width)  # Bottom-right corner
         ]
-        return all(corner in clicked_corners for corner in corners)
+        return all(corner in [c for c, color in clicked_corners] for corner in corners)
 
-    def claim_box(self, clicked_corners):
-        if self.is_complete(clicked_corners):
-            self.owner = 1
-            self.color = BLACK
+    def claim_box(self, clicked_corners, claiming_player): # player claimer is object rerpesenting the player class
+        if self.is_complete(clicked_corners) and self.color == WHITE: # claim only when unclaimed
+            self.owner = claiming_player
+            self.color = claiming_player.color
 
-    def draw(self, win):
+    def draw_box(self, win):
         pygame.draw.rect(win, self.color, (self.x, self.y, self.width, self.width))
+
+
+class Player:
+    def __init__(self, name, color):
+        self.name = name
+        self.color = color
 
 
 def get_clicked_corner(grid):
@@ -72,9 +78,9 @@ def get_clicked_corner(grid):
 
 def draw_circles_on_clicked_corners(win, clicked_corners_arr):
     if clicked_corners_arr:
-        for corner in clicked_corners_arr:
+        for corner, color in clicked_corners_arr:
             if corner:
-                pygame.draw.circle(win, RED, corner, 10)
+                pygame.draw.circle(win, BLACK, corner, 10)
 
 
 def make_grid(rows, width):
@@ -96,21 +102,26 @@ def draw_grid(win, rows, width):
         pygame.draw.line(win, GREY, (j * gap, 0), (j * gap, width))
 
 
-def draw(win, grid, rows, width, clicked_corners, highlighted_lines_arr):
+def draw(win, grid, rows, width, clicked_corners, highlighted_lines_arr, current_player):
+    print(current_player.name)
     win.fill(WHITE)
 
     for row in grid:
         for box in row:
-            box.claim_box(clicked_corners)
-            box.draw(win)
+            if box.is_complete(clicked_corners):
+                box.claim_box(clicked_corners, current_player)
+            box.draw_box(win)
+
     draw_grid(win, rows, width)
+
     draw_circles_on_clicked_corners(win, clicked_corners)
-    for line in highlighted_lines_arr:
+
+    for line, color in highlighted_lines_arr:
         start_pos, end_pos = line
-        pygame.draw.line(win, RED, start_pos, end_pos, 5)
+        pygame.draw.line(win, color, start_pos, end_pos, 5)
 
 
-def draw_animated_line(win, start_pos, end_pos, highlighted_lines_arr, duration=2):
+def draw_animated_line(win, start_pos, end_pos, highlighted_lines_arr, color, duration=2):
     steps = int(FPS * duration)
     for i in range(steps):
         alpha = i / steps
@@ -118,39 +129,49 @@ def draw_animated_line(win, start_pos, end_pos, highlighted_lines_arr, duration=
             start_pos[0] + alpha * (end_pos[0] - start_pos[0]),
             start_pos[1] + alpha * (end_pos[1] - start_pos[1])
         )
-        pygame.draw.line(win, RED, start_pos, intermediate_pos, 5)
+        pygame.draw.line(win, BLACK, start_pos, intermediate_pos, 5)
         pygame.display.update()
-    highlighted_lines_arr.append((start_pos, end_pos))
+    highlighted_lines_arr.append(((start_pos, end_pos), BLACK))
 
 
 def main(win, width):
     clock = pygame.time.Clock()
-    clock.tick(FPS)
+    players = [Player("Player 1", RED), Player("Player 2", TURQUOISE),Player("Player 3", GREEN)]
+    current_player_index = 0
 
     clicked_corners = []
     highlighted_lines_arr = []
 
-    ROWS = 10
+    ROWS = 15
     grid = make_grid(ROWS, width)
 
     running = True
 
     while running:
-        draw(win, grid, ROWS, width, clicked_corners, highlighted_lines_arr)
+        current_player = players[current_player_index]
+
+        draw(win, grid, ROWS, width, clicked_corners, highlighted_lines_arr, current_player)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            if pygame.mouse.get_pressed()[0]:
+
+            # click and only click open corners
+            # Rembmer the clicked corners array contains a 2d tuple(corner,BLACK)
+            if pygame.mouse.get_pressed()[0] and not ((get_clicked_corner(grid), BLACK) in clicked_corners):
+                current_player_index = (current_player_index + 1) % len(players)
+
                 corner = get_clicked_corner(grid)
-                if corner:
-                    for prev_corner in clicked_corners:
+                if corner and (corner, BLACK) not in clicked_corners:
+                    for prev_corner, prev_color in clicked_corners:
                         if prev_corner and (
                                 (abs(prev_corner[0] - corner[0]) == grid[0][0].width and prev_corner[1] == corner[1]) or
                                 (abs(prev_corner[1] - corner[1]) == grid[0][0].width and prev_corner[0] == corner[0])):
-                            draw_animated_line(win, prev_corner, corner, highlighted_lines_arr)
-                    clicked_corners.append(corner)
+                            draw_animated_line(win, prev_corner, corner, highlighted_lines_arr, BLACK)
+                    clicked_corners.append((corner, BLACK))
 
         pygame.display.update()
+        clock.tick(FPS)
 
     pygame.quit()
 
