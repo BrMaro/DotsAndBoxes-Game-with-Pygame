@@ -1,9 +1,11 @@
 import pygame
+import random
 
 WIDTH = 1000
 WIN = pygame.display.set_mode((WIDTH, WIDTH))
 pygame.display.set_caption("Dot&Dot")
 FPS = 30
+
 
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
@@ -28,7 +30,7 @@ class Box:
         self.col = col
         self.x = row * width
         self.y = col * width
-        self.color = WHITE  # Initialize with WHITE color
+        self.color = BLACK
         self.width = width
         self.total_rows = total_rows
         self.owner = None
@@ -103,7 +105,6 @@ def draw_grid(win, rows, width):
 
 
 def draw(win, grid, rows, width, clicked_corners, highlighted_lines_arr, current_player):
-    print(current_player.name)
     win.fill(WHITE)
 
     for row in grid:
@@ -121,6 +122,32 @@ def draw(win, grid, rows, width, clicked_corners, highlighted_lines_arr, current
         pygame.draw.line(win, color, start_pos, end_pos, 5)
 
 
+def spawn_random_corners(grid, num_corners):
+    clicked_corners = []
+    highlighted_lines_arr = []
+    all_corners = set()
+    for row in grid:
+        for box in row:
+            all_corners.update([
+                (box.x, box.y),
+                (box.x + box.width, box.y),
+                (box.x, box.y + box.width),
+                (box.x + box.width, box.y + box.width)
+            ])
+
+    # Convert the set to a sorted list before sampling
+    selected_corners = random.sample(sorted(all_corners), num_corners)
+    clicked_corners = [(corner, BLACK) for corner in selected_corners]
+    for i, (corner1, color1) in enumerate(clicked_corners):
+        for j, (corner2, color2) in enumerate(clicked_corners):
+            if i != j:
+                if (abs(corner1[0] - corner2[0]) == grid[0][0].width and corner1[1] == corner2[1]) or \
+                        (abs(corner1[1] - corner2[1]) == grid[0][0].width and corner1[0] == corner2[0]):
+                    # draw_animated_line(win, corner1, corner2, highlighted_lines_arr, BLACK)
+                    highlighted_lines_arr.append(((corner1, corner2), BLACK))
+    return clicked_corners, highlighted_lines_arr
+
+
 def draw_animated_line(win, start_pos, end_pos, highlighted_lines_arr, color, duration=2):
     steps = int(FPS * duration)
     for i in range(steps):
@@ -136,14 +163,12 @@ def draw_animated_line(win, start_pos, end_pos, highlighted_lines_arr, color, du
 
 def main(win, width):
     clock = pygame.time.Clock()
+    ROWS = 15
+    grid = make_grid(ROWS, width)
     players = [Player("Player 1", RED), Player("Player 2", TURQUOISE), Player("Player 3", GREEN)]
     current_player_index = 0
 
-    clicked_corners = []
-    highlighted_lines_arr = []
-
-    ROWS = 15
-    grid = make_grid(ROWS, width)
+    clicked_corners,highlighted_lines_arr = spawn_random_corners(grid, 50)
 
     running = True
 
@@ -159,12 +184,14 @@ def main(win, width):
             if pygame.mouse.get_pressed()[0] and not ((get_clicked_corner(grid), BLACK) in clicked_corners):
 
                 corner = get_clicked_corner(grid)
+                # draw line if corners are neighbouring each other
                 if corner and (corner, BLACK) not in clicked_corners:
                     for prev_corner, prev_color in clicked_corners:
                         if prev_corner and (
                                 (abs(prev_corner[0] - corner[0]) == grid[0][0].width and prev_corner[1] == corner[1]) or
                                 (abs(prev_corner[1] - corner[1]) == grid[0][0].width and prev_corner[0] == corner[0])):
                             draw_animated_line(win, prev_corner, corner, highlighted_lines_arr, BLACK)
+
                     clicked_corners.append((corner, BLACK))
 
                 for row in grid:
