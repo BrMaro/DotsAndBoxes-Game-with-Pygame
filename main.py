@@ -42,8 +42,8 @@ class Box:
         ]
         return all(corner in [c for c, color in clicked_corners] for corner in corners)
 
-    def claim_box(self, clicked_corners, claiming_player): # player claimer is object rerpesenting the player class
-        if self.is_complete(clicked_corners) and self.color == WHITE: # claim only when unclaimed
+    def claim_box(self, clicked_corners, claiming_player):  # player claimer is object rerpesenting the player class
+        if self.is_complete(clicked_corners) and self.color == WHITE:  # claim only when unclaimed
             self.owner = claiming_player
             self.color = claiming_player.color
 
@@ -136,7 +136,7 @@ def draw_animated_line(win, start_pos, end_pos, highlighted_lines_arr, color, du
 
 def main(win, width):
     clock = pygame.time.Clock()
-    players = [Player("Player 1", RED), Player("Player 2", TURQUOISE),Player("Player 3", GREEN)]
+    players = [Player("Player 1", RED), Player("Player 2", TURQUOISE), Player("Player 3", GREEN)]
     current_player_index = 0
 
     clicked_corners = []
@@ -149,8 +149,7 @@ def main(win, width):
 
     while running:
         current_player = players[current_player_index]
-
-
+        box_completed = False
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -167,10 +166,18 @@ def main(win, width):
                                 (abs(prev_corner[1] - corner[1]) == grid[0][0].width and prev_corner[0] == corner[0])):
                             draw_animated_line(win, prev_corner, corner, highlighted_lines_arr, BLACK)
                     clicked_corners.append((corner, BLACK))
-                current_player_index = (current_player_index + 1) % len(players)
+
+                for row in grid:
+                    for box in row:
+                        if box.is_complete(clicked_corners) and box.owner is None:
+                            box.owner = current_player
+                            box.color = current_player.color
+                            box_completed = True
+
+                if not box_completed:
+                    current_player_index = (current_player_index + 1) % len(players)
 
         draw(win, grid, ROWS, width, clicked_corners, highlighted_lines_arr, current_player)
-
 
         pygame.display.update()
         clock.tick(FPS)
