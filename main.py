@@ -150,16 +150,14 @@ def main(win, width):
     while running:
         current_player = players[current_player_index]
 
-        draw(win, grid, ROWS, width, clicked_corners, highlighted_lines_arr, current_player)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
             # click and only click open corners
-            # Rembmer the clicked corners array contains a 2d tuple(corner,BLACK)
+            # Remember the clicked corners array contains a 2d tuple(corner,BLACK)
             if pygame.mouse.get_pressed()[0] and not ((get_clicked_corner(grid), BLACK) in clicked_corners):
-                current_player_index = (current_player_index + 1) % len(players)
 
                 corner = get_clicked_corner(grid)
                 if corner and (corner, BLACK) not in clicked_corners:
@@ -169,6 +167,10 @@ def main(win, width):
                                 (abs(prev_corner[1] - corner[1]) == grid[0][0].width and prev_corner[0] == corner[0])):
                             draw_animated_line(win, prev_corner, corner, highlighted_lines_arr, BLACK)
                     clicked_corners.append((corner, BLACK))
+                current_player_index = (current_player_index + 1) % len(players)
+
+        draw(win, grid, ROWS, width, clicked_corners, highlighted_lines_arr, current_player)
+
 
         pygame.display.update()
         clock.tick(FPS)
