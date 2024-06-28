@@ -138,7 +138,7 @@ def draw_animated_line(win, start_pos, end_pos, highlighted_lines_arr, color, du
         pygame.display.update()
     highlighted_lines_arr.append(((start_pos, end_pos), color))
 
-def snap_to_nearest_corner(pos, grid):
+def snap_to_nearest_corner(pos, grid, start_corner):
     x, y = pos
     nearest_corner = None
     min_distance = float('inf')
@@ -152,10 +152,12 @@ def snap_to_nearest_corner(pos, grid):
                 (box.x + box.width, box.y + box.width)
             ]
             for corner in corners:
-                distance = math.hypot(corner[0] - x, corner[1] - y)
-                if distance < min_distance:
-                    min_distance = distance
-                    nearest_corner = corner
+                if (start_corner[0] == corner[0] and abs(start_corner[1] - corner[1]) == box.width) or \
+                   (start_corner[1] == corner[1] and abs(start_corner[0] - corner[0]) == box.width):
+                    distance = math.hypot(corner[0] - x, corner[1] - y)
+                    if distance < min_distance:
+                        min_distance = distance
+                        nearest_corner = corner
 
     return nearest_corner if min_distance <= 15 else None
 
@@ -183,7 +185,7 @@ def main(win, width):
                 start_corner = get_clicked_corner(grid)
 
             if event.type == pygame.MOUSEBUTTONUP and start_corner:
-                end_corner = snap_to_nearest_corner(pygame.mouse.get_pos(), grid)
+                end_corner = snap_to_nearest_corner(pygame.mouse.get_pos(), grid, start_corner)
                 if end_corner and start_corner != end_corner:
                     if (start_corner, end_corner) not in highlighted_lines_arr and (end_corner, start_corner) not in highlighted_lines_arr:
                         draw_animated_line(win, start_corner, end_corner, highlighted_lines_arr, BLACK)
@@ -198,16 +200,17 @@ def main(win, width):
 
                         if not box_completed:
                             current_player_index = (current_player_index + 1) % len(players)
+                start_corner = None
 
-        if start_corner:
+        draw(win, grid, ROWS, width, highlighted_lines_arr, current_player)
+
+        if start_corner and pygame.mouse.get_pressed()[0]:
             mouse_pos = pygame.mouse.get_pos()
-            end_corner = snap_to_nearest_corner(mouse_pos, grid)
+            end_corner = snap_to_nearest_corner(mouse_pos, grid, start_corner)
             if end_corner:
                 pygame.draw.line(win, current_player.color, start_corner, end_corner, 3)
             else:
                 pygame.draw.line(win, current_player.color, start_corner, mouse_pos, 3)
-
-        draw(win, grid, ROWS, width, highlighted_lines_arr, current_player)
 
         pygame.display.update()
         clock.tick(FPS)
