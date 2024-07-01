@@ -55,7 +55,9 @@ class Box:
             ((corners[2], corners[0]), BASE_EDGE_COLOR)  # Left edge
         ]
 
-        return all(edge in highlighted_lines or ((edge[0][1], edge[0][0]), BASE_EDGE_COLOR) in highlighted_lines for edge in edges)
+        return all(
+            edge in highlighted_lines or ((edge[0][1], edge[0][0]), BASE_EDGE_COLOR) in highlighted_lines for edge in
+            edges)
 
     def claim_box(self, highlighted_lines, claiming_player):
         if self.is_complete(highlighted_lines) and self.color == BACKGROUND_COLOR:
@@ -110,7 +112,10 @@ def draw_grid(win, rows, width):
         pygame.draw.line(win, GREY, (j * gap, 0), (j * gap, width))
 
 
-def draw_circles(win, grid):
+def draw_circles(win, grid, highlighted_corners=None):
+    if highlighted_corners is None:
+        highlighted_corners = []
+
     for row in grid:
         for box in row:
             corners = [
@@ -120,21 +125,40 @@ def draw_circles(win, grid):
                 (box.x + box.width, box.y + box.width)
             ]
             for corner in corners:
-                pygame.draw.circle(win, BLACK, corner, VERTEX_RADIUS)
+                radius = VERTEX_RADIUS
+                if corner in highlighted_corners:
+                    radius += int(VERTEX_RADIUS * 0.5 * math.sin(pygame.time.get_ticks() / 200))
+                pygame.draw.circle(win, BLACK, corner, radius)
 
 
-def draw(win, grid, rows, width, highlighted_lines, current_player):
+def get_neighbouring_corners(corner, grid):
+    x, y = corner
+    neighbours = []
+
+    for row in grid:
+        for box in row:
+            corners = [
+                (box.x, box.y),
+                (box.x + box.width, box.y),
+                (box.x, box.y + box.width),
+                (box.x + box.width, box.y + box.width)
+            ]
+            for c in corners:
+                if (corner[0] == c[0] and abs(corner[1] - c[1]) == box.width) or (
+                        corner[1] == c[1] and abs(corner[0] - c[0]) == box.width):
+                    neighbours.append(c)
+    return neighbours
+
+
+def draw(win, grid, rows, width, highlighted_lines, current_player, highlighted_corners=None):
     win.fill(BACKGROUND_COLOR)
-    # print(highlighted_lines)
     for row in grid:
         for box in row:
             box.claim_box(highlighted_lines, current_player)
             box.draw_box(win)
 
-
     draw_grid(win, rows, width)
-    draw_circles(win, grid)
-
+    draw_circles(win, grid, highlighted_corners)
     for line, color in highlighted_lines:
         start_pos, end_pos = line
         pygame.draw.line(win, color, start_pos, end_pos, EDGE_THICKNESS)
@@ -186,6 +210,7 @@ def main(win, width):
 
     highlighted_lines_arr = []
     start_corner = None
+    highlighted_corners = []
 
     running = True
 
@@ -199,6 +224,8 @@ def main(win, width):
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 start_corner = get_clicked_corner(grid)
+                if start_corner:
+                    highlighted_corners = get_neighbouring_corners(start_corner, grid)
 
             if event.type == pygame.MOUSEBUTTONUP and start_corner:
                 end_corner = snap_to_nearest_corner(pygame.mouse.get_pos(), grid, start_corner)
@@ -208,6 +235,7 @@ def main(win, width):
                     end_corner, start_corner) not in highlighted_lines_arr:
                         draw_animated_line(win, start_corner, end_corner, highlighted_lines_arr, BASE_EDGE_COLOR)
                         start_corner = None
+                        highlighted_corners = []
 
                         for row in grid:
                             for box in row:
@@ -218,10 +246,11 @@ def main(win, width):
                         if not box_completed:
                             current_player_index = (current_player_index + 1) % len(players)
                 start_corner = None
+                highlighted_corners = []
 
-        draw(win, grid, ROWS, width, highlighted_lines_arr, current_player)
+        draw(win, grid, ROWS, width, highlighted_lines_arr, current_player, highlighted_corners)
 
-        # Handle snapping to nearest corner
+        # Handle snapping to nearest corner and drawing guide line
         if start_corner and pygame.mouse.get_pressed()[0]:
             mouse_pos = pygame.mouse.get_pos()
             end_corner = snap_to_nearest_corner(mouse_pos, grid, start_corner)
@@ -230,10 +259,13 @@ def main(win, width):
             else:
                 pygame.draw.line(win, current_player.color, start_corner, mouse_pos, 3)
 
+        draw_circles(win, grid, highlighted_corners)
+
         pygame.display.update()
         clock.tick(FPS)
 
     pygame.quit()
+
 
 
 main(WIN, WIDTH)
