@@ -123,6 +123,19 @@ def draw_grid(win, rows, width):
                          (LEFT_MARGIN + j * gap, width - BOTTOM_MARGIN))
 
 
+def draw_rotating_dotted_circle(win, center, radius):
+    num_dots = 20
+    dot_radius = 2
+    time = pygame.time.get_ticks() / 1000
+    angle = math.radians(360 / num_dots)
+
+    for i in range(num_dots):
+        offset_angle = angle * i + time * math.pi  # Rotate based on time
+        dot_x = center[0] + radius * math.cos(offset_angle)
+        dot_y = center[1] + radius * math.sin(offset_angle)
+        pygame.draw.circle(win, BLACK, (int(dot_x), int(dot_y)), dot_radius)
+
+
 def draw_circles(win, grid, highlighted_corners=None):
     if highlighted_corners is None:
         highlighted_corners = []
@@ -136,10 +149,10 @@ def draw_circles(win, grid, highlighted_corners=None):
                 (box.x + box.width, box.y + box.width)
             ]
             for corner in corners:
-                radius = VERTEX_RADIUS
+                pygame.draw.circle(win, BLACK, corner, VERTEX_RADIUS)
                 if corner in highlighted_corners:
-                    radius += int(VERTEX_RADIUS * 0.5 * math.sin(pygame.time.get_ticks() / 200))
-                pygame.draw.circle(win, BLACK, corner, radius)
+                    draw_rotating_dotted_circle(win, corner, VERTEX_RADIUS + 3)
+
 
 
 def get_neighbouring_corners(corner, grid):
