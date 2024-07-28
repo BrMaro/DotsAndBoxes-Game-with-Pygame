@@ -25,16 +25,18 @@ GREY = (128, 128, 128)
 WHITE = (255, 255, 255)
 TURQUOISE = (64, 224, 208)
 
-BACKGROUND_COLOR = WHITE
 VERTEX_RADIUS = 10
 EDGE_THICKNESS = 5
 SNAP_DISTANCE = 40
-BASE_EDGE_COLOR = BLACK
-LEFT_MARGIN = 10
-RIGHT_MARGIN = 10
-BOTTOM_MARGIN = 10
-TOP_STATS_HEIGHT = 100
+LEFT_MARGIN = 40
+RIGHT_MARGIN = 40
+BOTTOM_MARGIN = 40
+TOP_STATS_HEIGHT = 150
 
+BACKGROUND_COLOR = WHITE
+TEXT_COLOR = BLACK
+BASE_CORNER_COLOR = BLACK
+BASE_EDGE_COLOR = BLACK
 
 class Box:
     def __init__(self, row, col, width, total_rows):
@@ -118,7 +120,7 @@ def draw_grid(win, rows, width):
     for i in range(rows):
         pygame.draw.line(win, GREY, (LEFT_MARGIN, TOP_STATS_HEIGHT + i * gap),
                          (width - RIGHT_MARGIN, TOP_STATS_HEIGHT + i * gap))
-    for j in range(rows):
+    for j in range(rows+1):
         pygame.draw.line(win, GREY, (LEFT_MARGIN + j * gap, TOP_STATS_HEIGHT),
                          (LEFT_MARGIN + j * gap, width - BOTTOM_MARGIN))
 
@@ -194,11 +196,17 @@ def draw(win, grid, rows, width, highlighted_lines, current_player, highlighted_
             if box.get_owner() is not None:
                 scores[box.get_owner()] += 1
 
-    # Draw player scores
+    # Sort players by scores in descending order
+    sorted_players = sorted(players, key=lambda player: scores[player], reverse=True)
+
+    # Draw player scores in a numbered list format
     font = pygame.font.SysFont('Arial', 24)
-    scores_text = "Scores: " + " - ".join([f'{player.name}: {scores[player]}' for player in players])
-    text = font.render(scores_text, True, BLACK)
-    win.blit(text, (10, 10))
+    y_offset = 10
+    for idx, player in enumerate(sorted_players, start=1):
+        score_text = f"{idx}. {player.name}: {scores[player]}"
+        text = font.render(score_text, True, BLACK)
+        win.blit(text, (40, y_offset))
+        y_offset += text.get_height() + 5  # Adjust y_offset for the next player's score
 
 
 def draw_animated_line(win, start_pos, end_pos, highlighted_lines_arr, color, duration=2):
@@ -240,7 +248,7 @@ def snap_to_nearest_corner(pos, grid, start_corner):
 
 def main(win, width):
     clock = pygame.time.Clock()
-    ROWS = 10
+    ROWS = 20
     grid = make_grid(ROWS, width)
     players = [Player("Player 1", RED), Player("Player 2", TURQUOISE), Player("Player 3", GREEN)]
     current_player_index = 0
