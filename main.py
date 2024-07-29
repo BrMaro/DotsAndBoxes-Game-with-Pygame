@@ -30,13 +30,14 @@ EDGE_THICKNESS = 5
 SNAP_DISTANCE = 40
 LEFT_MARGIN = 40
 RIGHT_MARGIN = 40
-BOTTOM_MARGIN = 40
+BOTTOM_MARGIN = 0
 TOP_STATS_HEIGHT = 150
 
 BACKGROUND_COLOR = WHITE
 TEXT_COLOR = BLACK
 BASE_CORNER_COLOR = BLACK
 BASE_EDGE_COLOR = BLACK
+
 
 class Box:
     def __init__(self, row, col, width, total_rows):
@@ -120,13 +121,13 @@ def draw_grid(win, rows, width):
     for i in range(rows):
         pygame.draw.line(win, GREY, (LEFT_MARGIN, TOP_STATS_HEIGHT + i * gap),
                          (width - RIGHT_MARGIN, TOP_STATS_HEIGHT + i * gap))
-    for j in range(rows+1):
+    for j in range(rows + 1):
         pygame.draw.line(win, GREY, (LEFT_MARGIN + j * gap, TOP_STATS_HEIGHT),
                          (LEFT_MARGIN + j * gap, width - BOTTOM_MARGIN))
 
 
 def draw_rotating_dotted_circle(win, center, radius):
-    num_dots = 20
+    num_dots = 15
     dot_radius = 2
     time = pygame.time.get_ticks() / 1000
     angle = math.radians(360 / num_dots)
@@ -135,10 +136,10 @@ def draw_rotating_dotted_circle(win, center, radius):
         offset_angle = angle * i + time * math.pi  # Rotate based on time
         dot_x = center[0] + radius * math.cos(offset_angle)
         dot_y = center[1] + radius * math.sin(offset_angle)
-        pygame.draw.circle(win, BLACK, (int(dot_x), int(dot_y)), dot_radius)
+        pygame.draw.circle(win, BASE_CORNER_COLOR, (int(dot_x), int(dot_y)), dot_radius)
 
 
-def draw_circles(win, grid, highlighted_corners=None):
+def draw_circles(win, grid,highlighted_lines_arr=None, highlighted_corners=None):
     if highlighted_corners is None:
         highlighted_corners = []
 
@@ -151,10 +152,9 @@ def draw_circles(win, grid, highlighted_corners=None):
                 (box.x + box.width, box.y + box.width)
             ]
             for corner in corners:
-                pygame.draw.circle(win, BLACK, corner, VERTEX_RADIUS)
+                pygame.draw.circle(win, BASE_CORNER_COLOR, corner, VERTEX_RADIUS)
                 if corner in highlighted_corners:
                     draw_rotating_dotted_circle(win, corner, VERTEX_RADIUS + 3)
-
 
 
 def get_neighbouring_corners(corner, grid):
@@ -170,14 +170,26 @@ def get_neighbouring_corners(corner, grid):
                 (box.x + box.width, box.y + box.width)
             ]
             for c in corners:
-                if (corner[0] == c[0] and abs(corner[1] - c[1]) == box.width) or (
-                        corner[1] == c[1] and abs(corner[0] - c[0]) == box.width):
+                if (corner[0] == c[0] and abs(corner[1] - c[1]) == box.width) or (corner[1] == c[1] and abs(corner[0] - c[0]) == box.width):
                     neighbours.append(c)
     return neighbours
 
 
+def draw_rejection_animation(win, start_pos, end_pos, color):
+    for _ in range(3):
+        pygame.draw.line(win, RED, start_pos, end_pos, EDGE_THICKNESS)
+        pygame.display.update()
+        pygame.time.delay(100)
+        pygame.draw.line(win, BACKGROUND_COLOR, start_pos, end_pos, EDGE_THICKNESS)
+        pygame.display.update()
+        pygame.time.delay(100)
+
+
+
 def draw(win, grid, rows, width, highlighted_lines, current_player, highlighted_corners=None, players=None):
+
     win.fill(BACKGROUND_COLOR)
+
     for row in grid:
         for box in row:
             box.claim_box(highlighted_lines, current_player)
@@ -185,6 +197,8 @@ def draw(win, grid, rows, width, highlighted_lines, current_player, highlighted_
 
     draw_grid(win, rows, width)
     draw_circles(win, grid, highlighted_corners)
+
+    # Draw already claimed edges
     for line, color in highlighted_lines:
         start_pos, end_pos = line
         pygame.draw.line(win, color, start_pos, end_pos, EDGE_THICKNESS)
@@ -204,7 +218,7 @@ def draw(win, grid, rows, width, highlighted_lines, current_player, highlighted_
     y_offset = 10
     for idx, player in enumerate(sorted_players, start=1):
         score_text = f"{idx}. {player.name}: {scores[player]}"
-        text = font.render(score_text, True, BLACK)
+        text = font.render(score_text, True, TEXT_COLOR)
         win.blit(text, (40, y_offset))
         y_offset += text.get_height() + 5  # Adjust y_offset for the next player's score
 
@@ -215,11 +229,12 @@ def draw_animated_line(win, start_pos, end_pos, highlighted_lines_arr, color, du
         alpha = i / steps
         intermediate_pos = (
             start_pos[0] + alpha * (end_pos[0] - start_pos[0]),
-            start_pos[1] + alpha * (end_pos[1] - start_pos[1])
+            start_pos[1] + alpha * (end_pos[1] - end_pos[1])
         )
         pygame.draw.line(win, color, start_pos, intermediate_pos, EDGE_THICKNESS)
         pygame.display.update()
     highlighted_lines_arr.append(((start_pos, end_pos), color))
+
 
 
 def snap_to_nearest_corner(pos, grid, start_corner):
@@ -248,7 +263,7 @@ def snap_to_nearest_corner(pos, grid, start_corner):
 
 def main(win, width):
     clock = pygame.time.Clock()
-    ROWS = 20
+    ROWS = 10
     grid = make_grid(ROWS, width)
     players = [Player("Player 1", RED), Player("Player 2", TURQUOISE), Player("Player 3", GREEN)]
     current_player_index = 0
@@ -276,8 +291,8 @@ def main(win, width):
                 end_corner = snap_to_nearest_corner(pygame.mouse.get_pos(), grid, start_corner)
 
                 if end_corner and start_corner != end_corner:
-                    if (start_corner, end_corner) not in highlighted_lines_arr and (
-                            end_corner, start_corner) not in highlighted_lines_arr:
+                    if (start_corner, end_corner) not in [line for line, _ in highlighted_lines_arr] and (
+                            end_corner, start_corner) not in [line for line, _ in highlighted_lines_arr]:
                         draw_animated_line(win, start_corner, end_corner, highlighted_lines_arr, BASE_EDGE_COLOR)
                         start_corner = None
                         highlighted_corners = []
@@ -290,6 +305,12 @@ def main(win, width):
 
                         if not box_completed:
                             current_player_index = (current_player_index + 1) % len(players)
+                    else:
+                        # Rejection animation for already drawn line
+                        draw_rejection_animation(win, start_corner, end_corner, current_player.color)
+                        start_corner = None
+                        highlighted_corners = []
+
                 start_corner = None
                 highlighted_corners = []
 
@@ -304,12 +325,9 @@ def main(win, width):
             else:
                 pygame.draw.line(win, current_player.color, start_corner, mouse_pos, 3)
 
-        draw_circles(win, grid, highlighted_corners)
-
         pygame.display.update()
         clock.tick(FPS)
 
     pygame.quit()
-
 
 main(WIN, WIDTH)
