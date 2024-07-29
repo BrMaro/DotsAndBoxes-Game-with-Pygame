@@ -30,7 +30,7 @@ EDGE_THICKNESS = 5
 SNAP_DISTANCE = 40
 LEFT_MARGIN = 40
 RIGHT_MARGIN = 40
-BOTTOM_MARGIN = 0
+BOTTOM_MARGIN = 10
 TOP_STATS_HEIGHT = 150
 
 BACKGROUND_COLOR = WHITE
@@ -139,7 +139,7 @@ def draw_rotating_dotted_circle(win, center, radius):
         pygame.draw.circle(win, BASE_CORNER_COLOR, (int(dot_x), int(dot_y)), dot_radius)
 
 
-def draw_circles(win, grid,highlighted_lines_arr=None, highlighted_corners=None):
+def draw_circles(win, grid, highlighted_lines_arr=None, highlighted_corners=None):
     if highlighted_corners is None:
         highlighted_corners = []
 
@@ -170,7 +170,8 @@ def get_neighbouring_corners(corner, grid):
                 (box.x + box.width, box.y + box.width)
             ]
             for c in corners:
-                if (corner[0] == c[0] and abs(corner[1] - c[1]) == box.width) or (corner[1] == c[1] and abs(corner[0] - c[0]) == box.width):
+                if (corner[0] == c[0] and abs(corner[1] - c[1]) == box.width) or (
+                        corner[1] == c[1] and abs(corner[0] - c[0]) == box.width):
                     neighbours.append(c)
     return neighbours
 
@@ -185,9 +186,7 @@ def draw_rejection_animation(win, start_pos, end_pos, color):
         pygame.time.delay(100)
 
 
-
 def draw(win, grid, rows, width, highlighted_lines, current_player, highlighted_corners=None, players=None):
-
     win.fill(BACKGROUND_COLOR)
 
     for row in grid:
@@ -236,7 +235,6 @@ def draw_animated_line(win, start_pos, end_pos, highlighted_lines_arr, color, du
     highlighted_lines_arr.append(((start_pos, end_pos), color))
 
 
-
 def snap_to_nearest_corner(pos, grid, start_corner):
     x, y = pos
     nearest_corner = None
@@ -251,12 +249,15 @@ def snap_to_nearest_corner(pos, grid, start_corner):
                 (box.x + box.width, box.y + box.width)
             ]
             for corner in corners:
-                if (start_corner[0] == corner[0] and abs(start_corner[1] - corner[1]) == box.width) or (
-                        start_corner[1] == corner[1] and abs(start_corner[0] - corner[0]) == box.width):
-                    distance = math.hypot(corner[0] - x, corner[1] - y)
-                    if distance < min_distance:
-                        min_distance = distance
-                        nearest_corner = corner
+                # Ensure the corner is within the window bounds
+                if 0 <= corner[0] <= WIDTH and TOP_STATS_HEIGHT <= corner[1] <= WIDTH - BOTTOM_MARGIN:
+                    # Ensure the corner is a valid neighbor
+                    if (start_corner[0] == corner[0] and abs(start_corner[1] - corner[1]) == box.width) or (
+                            start_corner[1] == corner[1] and abs(start_corner[0] - corner[0]) == box.width):
+                        distance = math.hypot(corner[0] - x, corner[1] - y)
+                        if distance < min_distance:
+                            min_distance = distance
+                            nearest_corner = corner
 
     return nearest_corner if min_distance <= SNAP_DISTANCE else None
 
@@ -329,5 +330,6 @@ def main(win, width):
         clock.tick(FPS)
 
     pygame.quit()
+
 
 main(WIN, WIDTH)
