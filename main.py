@@ -1,5 +1,4 @@
 import pygame
-import random
 import math
 
 WIDTH = 1000
@@ -25,7 +24,7 @@ GREY = (128, 128, 128)
 WHITE = (255, 255, 255)
 TURQUOISE = (64, 224, 208)
 
-VERTEX_RADIUS = 10
+VERTEX_RADIUS = 4
 EDGE_THICKNESS = 5
 SNAP_DISTANCE = 40
 LEFT_MARGIN = 40
@@ -37,6 +36,7 @@ BACKGROUND_COLOR = WHITE
 TEXT_COLOR = BLACK
 BASE_CORNER_COLOR = BLACK
 BASE_EDGE_COLOR = BLACK
+EDGE_REJECTION_COLOR = RED
 
 
 class Box:
@@ -139,7 +139,9 @@ def draw_rotating_dotted_circle(win, center, radius):
         pygame.draw.circle(win, BASE_CORNER_COLOR, (int(dot_x), int(dot_y)), dot_radius)
 
 
-def draw_circles(win, grid, highlighted_lines_arr=None, highlighted_corners=None):
+def draw_circles(win, grid, highlighted_corners=None, highlighted_lines_arr=None, ):
+    if highlighted_lines_arr is None:
+        highlighted_lines_arr = []
     if highlighted_corners is None:
         highlighted_corners = []
 
@@ -153,13 +155,21 @@ def draw_circles(win, grid, highlighted_lines_arr=None, highlighted_corners=None
             ]
             for corner in corners:
                 pygame.draw.circle(win, BASE_CORNER_COLOR, corner, VERTEX_RADIUS)
+
                 if corner in highlighted_corners:
-                    draw_rotating_dotted_circle(win, corner, VERTEX_RADIUS + 3)
+
+                    is_connected = any(
+                        ((corner, neighbor), BASE_EDGE_COLOR) in highlighted_lines_arr or
+                        ((neighbor, corner), BASE_EDGE_COLOR) in highlighted_lines_arr
+                        for neighbor in get_neighbouring_corners(corner, grid)
+                    )
+                    if not is_connected:
+                        draw_rotating_dotted_circle(win, corner, VERTEX_RADIUS + 3)
 
 
 def get_neighbouring_corners(corner, grid):
     x, y = corner
-    neighbours = []
+    neighbors = []
 
     for row in grid:
         for box in row:
@@ -172,8 +182,8 @@ def get_neighbouring_corners(corner, grid):
             for c in corners:
                 if (corner[0] == c[0] and abs(corner[1] - c[1]) == box.width) or (
                         corner[1] == c[1] and abs(corner[0] - c[0]) == box.width):
-                    neighbours.append(c)
-    return neighbours
+                    neighbors.append(c)
+    return list(set(neighbors))
 
 
 def draw_rejection_animation(win, start_pos, end_pos, color):
@@ -266,7 +276,7 @@ def main(win, width):
     clock = pygame.time.Clock()
     ROWS = 10
     grid = make_grid(ROWS, width)
-    players = [Player("Player 1", RED), Player("Player 2", TURQUOISE), Player("Player 3", GREEN)]
+    players = [Player("Player 1", RED), Player("Player 2", TURQUOISE)]
     current_player_index = 0
 
     highlighted_lines_arr = []
@@ -295,8 +305,6 @@ def main(win, width):
                     if (start_corner, end_corner) not in [line for line, _ in highlighted_lines_arr] and (
                             end_corner, start_corner) not in [line for line, _ in highlighted_lines_arr]:
                         draw_animated_line(win, start_corner, end_corner, highlighted_lines_arr, BASE_EDGE_COLOR)
-                        start_corner = None
-                        highlighted_corners = []
 
                         for row in grid:
                             for box in row:
@@ -309,8 +317,6 @@ def main(win, width):
                     else:
                         # Rejection animation for already drawn line
                         draw_rejection_animation(win, start_corner, end_corner, current_player.color)
-                        start_corner = None
-                        highlighted_corners = []
 
                 start_corner = None
                 highlighted_corners = []
